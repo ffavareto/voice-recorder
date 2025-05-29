@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gravador de Mensagens de Voz</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Gravador de Mensagens de Voz</h1>
+            <p>Grave e armazene suas mensagens de voz localmente</p>
+        </header>
+
+        <main>
+            <!-- Seção de Gravação -->
+            <section class="recording-section">
+                <div class="recorder-controls">
+                    <button id="startRecord" class="btn btn-record">
+                        Iniciar Gravação
+                    </button>
+                    <button id="stopRecord" class="btn btn-stop" disabled>
+                        Parar Gravação
+                    </button>
+                    <button id="playRecord" class="btn btn-play" disabled>
+                        Reproduzir
+                    </button>
+                </div>
+
+                <div class="recording-status">
+                    <div id="recordingIndicator" class="recording-indicator hidden">
+                        <span class="pulse"></span>
+                        Gravando...
+                    </div>
+                    <div id="timer" class="timer">00:00</div>
+                </div>
+
+                <div class="audio-preview">
+                    <audio id="audioPreview" controls style="display: none;"></audio>
+                </div>
+
+                <div class="save-section hidden" id="saveSection">
+                    <input type="text" id="messageTitle" placeholder="Digite um título para a mensagem..." maxlength="50">
+                    <button id="saveMessage" class="btn btn-save">
+                        Salvar Mensagem
+                    </button>
+                </div>
+            </section>
+
+            <!-- Seção de Mensagens Salvas -->
+            <section class="messages-section">
+                <h2>Mensagens Salvas</h2>
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="Buscar mensagens...">
+                    <button id="clearAll" class="btn btn-danger">
+                        Limpar Todas
+                    </button>
+                </div>
+                <div id="messagesList" class="messages-list">
+                    <div class="empty-state">
+                        <p>Nenhuma mensagem gravada ainda.</p>
+                        <p>Clique em "Iniciar Gravação" para começar!</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Modal de Confirmação -->
+        <div id="confirmModal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Confirmar Ação</h3>
+                <p id="confirmMessage"></p>
+                <div class="modal-buttons">
+                    <button id="confirmYes" class="btn btn-danger">Sim</button>
+                    <button id="confirmNo" class="btn btn-secondary">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast para notificações -->
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
