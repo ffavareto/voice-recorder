@@ -39,6 +39,38 @@ header p {
     font-weight: 400;
 }
 
+.app-status {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.status-pill {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid #ced4da;
+    color: #6c757d;
+    background: #f1f3f5;
+}
+
+.status-pill.online {
+    color: #1f7a45;
+    border-color: #b5e4c4;
+    background: #e8f7ee;
+}
+
+.status-pill.offline {
+    color: #8a2f2f;
+    border-color: #f1b6b6;
+    background: #fdecec;
+}
+
 /* Seções principais */
 section {
     background: white;
@@ -171,6 +203,28 @@ section h2 {
     margin-bottom: 20px;
 }
 
+.recording-settings {
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.checkbox-setting {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #495057;
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.checkbox-setting input {
+    accent-color: #495057;
+}
+
 .recording-indicator {
     display: flex;
     align-items: center;
@@ -238,12 +292,37 @@ section h2 {
     box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.1);
 }
 
+.select-control {
+    padding: 10px 14px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+    color: #495057;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.select-control:focus {
+    border-color: #6c757d;
+    box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.1);
+}
+
+.bulk-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
 /* Barra de busca */
 .search-bar {
     display: flex;
     gap: 12px;
     margin-bottom: 20px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 #searchInput {
@@ -297,6 +376,32 @@ section h2 {
 .message-date {
     color: #6c757d;
     font-size: 0.85rem;
+}
+
+.message-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.message-category {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.message-badge {
+    font-size: 0.72rem;
+    color: #1f7a45;
+    background: #e8f7ee;
+    border: 1px solid #b5e4c4;
+    border-radius: 999px;
+    padding: 2px 8px;
 }
 
 .message-controls {
@@ -474,6 +579,11 @@ section h2 {
         padding: 12px 14px;
         font-size: 0.9rem;
     }
+
+    .bulk-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
     
     .search-bar {
         flex-direction: column;
@@ -481,6 +591,12 @@ section h2 {
     }
     
     #searchInput {
+        width: 100%;
+        padding: 12px 14px;
+        font-size: 0.9rem;
+    }
+
+    .select-control {
         width: 100%;
         padding: 12px 14px;
         font-size: 0.9rem;
@@ -599,6 +715,12 @@ section h2 {
     .recording-indicator {
         font-size: 0.85rem;
     }
+
+    .checkbox-setting {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
     
     #messageTitle {
         padding: 14px 12px;
@@ -607,6 +729,12 @@ section h2 {
     }
     
     #searchInput {
+        padding: 14px 12px;
+        font-size: 0.85rem;
+        border-radius: 6px;
+    }
+
+    .select-control {
         padding: 14px 12px;
         font-size: 0.85rem;
         border-radius: 6px;
@@ -861,7 +989,8 @@ section h2 {
     }
     
     #messageTitle,
-    #searchInput {
+    #searchInput,
+    .select-control {
         background: #2d3748;
         border-color: #4a5568;
         color: #f7fafc;
@@ -870,6 +999,42 @@ section h2 {
     #messageTitle::placeholder,
     #searchInput::placeholder {
         color: #a0aec0;
+    }
+
+    .status-pill {
+        border-color: #4a5568;
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+
+    .status-pill.online {
+        background: #1f3a2a;
+        border-color: #2f855a;
+        color: #9ae6b4;
+    }
+
+    .status-pill.offline {
+        background: #3f1f1f;
+        border-color: #c53030;
+        color: #feb2b2;
+    }
+
+    .checkbox-setting {
+        background: #1a202c;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+
+    .message-category {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #cbd5e0;
+    }
+
+    .message-badge {
+        background: #1f3a2a;
+        border-color: #2f855a;
+        color: #9ae6b4;
     }
     
     .modal-content {
