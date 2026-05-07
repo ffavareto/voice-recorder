@@ -1,13 +1,13 @@
+const VoiceRecorderUtils = window.VoiceRecorderUtils;
+
+if (!VoiceRecorderUtils) {
+    throw new Error('VoiceRecorderUtils não foi carregado.');
+}
+
 class VoiceRecorderApp {
     constructor() {
         this.storageKey = 'voiceMessages';
-        this.categories = {
-            geral: 'Geral',
-            trabalho: 'Trabalho',
-            pessoal: 'Pessoal',
-            estudos: 'Estudos',
-            ideias: 'Ideias'
-        };
+        this.categories = { ...VoiceRecorderUtils.defaultCategories };
 
         this.mediaRecorder = null;
         this.audioChunks = [];
@@ -334,25 +334,11 @@ class VoiceRecorderApp {
     }
 
     normalizeMessage(message) {
-        const safeMessage = message || {};
-        const category = this.categories[safeMessage.category] ? safeMessage.category : 'geral';
-        const audioData = typeof safeMessage.audioData === 'string' ? safeMessage.audioData : '';
-        const inferredMime = this.extractMimeTypeFromDataURL(audioData) || 'audio/webm';
-        const size = Number.isFinite(safeMessage.size)
-            ? safeMessage.size
-            : this.estimateSizeFromDataURL(audioData);
-
-        return {
-            id: safeMessage.id ? String(safeMessage.id) : this.generateId(),
-            title: safeMessage.title ? String(safeMessage.title) : 'Mensagem sem título',
-            category,
-            date: safeMessage.date ? String(safeMessage.date) : new Date().toLocaleString('pt-BR'),
-            duration: safeMessage.duration ? String(safeMessage.duration) : '00:00',
-            audioData,
-            mimeType: safeMessage.mimeType ? String(safeMessage.mimeType) : inferredMime,
-            size,
-            compressed: Boolean(safeMessage.compressed)
-        };
+        return VoiceRecorderUtils.normalizeMessage(message, {
+            categories: this.categories,
+            generateId: () => this.generateId(),
+            now: () => new Date().toLocaleString('pt-BR')
+        });
     }
 
     loadMessages() {
@@ -363,16 +349,10 @@ class VoiceRecorderApp {
         const searchTerm = this.searchInput.value.trim().toLowerCase();
         const selectedCategory = this.categoryFilter.value;
         const messages = this.getMessagesFromStorage();
-
-        const filteredMessages = messages.filter((message) => {
-            const matchesCategory = selectedCategory === 'all' || message.category === selectedCategory;
-            const categoryLabel = this.getCategoryLabel(message.category).toLowerCase();
-            const matchesSearch = !searchTerm
-                || message.title.toLowerCase().includes(searchTerm)
-                || message.date.toLowerCase().includes(searchTerm)
-                || categoryLabel.includes(searchTerm);
-
-            return matchesCategory && matchesSearch;
+        const filteredMessages = VoiceRecorderUtils.filterMessages(messages, {
+            searchTerm,
+            selectedCategory,
+            categories: this.categories
         });
 
         this.renderMessages(filteredMessages);
@@ -961,10 +941,7 @@ class VoiceRecorderApp {
     }
 
     formatDuration(secondsTotal) {
-        const safeSeconds = Math.max(0, Math.floor(secondsTotal));
-        const minutes = Math.floor(safeSeconds / 60);
-        const seconds = safeSeconds % 60;
-        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        return VoiceRecorderUtils.formatDuration(secondsTotal);
     }
 
     async blobToDataURL(blob) {
@@ -977,61 +954,19 @@ class VoiceRecorderApp {
     }
 
     dataURLToBlob(dataURL) {
-        const parts = dataURL.split(',');
-        if (parts.length !== 2) {
-            throw new Error('DataURL inválida.');
-        }
-
-        const mimeMatch = parts[0].match(/data:(.*?);base64/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-        const binary = atob(parts[1]);
-        const bytes = new Uint8Array(binary.length);
-
-        for (let i = 0; i < binary.length; i += 1) {
-            bytes[i] = binary.charCodeAt(i);
-        }
-
-        return new Blob([bytes], { type: mimeType });
+        return VoiceRecorderUtils.dataURLToBlob(dataURL);
     }
 
     extractMimeTypeFromDataURL(dataURL) {
-        if (!dataURL || typeof dataURL !== 'string') {
-            return '';
-        }
-
-        const match = dataURL.match(/^data:(.*?);base64,/);
-        return match ? match[1] : '';
+        return VoiceRecorderUtils.extractMimeTypeFromDataURL(dataURL);
     }
 
     estimateSizeFromDataURL(dataURL) {
-        if (!dataURL || typeof dataURL !== 'string') {
-            return 0;
-        }
-
-        const base64 = dataURL.split(',')[1] || '';
-        return Math.ceil((base64.length * 3) / 4);
+        return VoiceRecorderUtils.estimateSizeFromDataURL(dataURL);
     }
 
     getExtensionFromMimeType(mimeType) {
-        const mime = (mimeType || '').toLowerCase();
-
-        if (mime.includes('mpeg')) {
-            return 'mp3';
-        }
-        if (mime.includes('wav')) {
-            return 'wav';
-        }
-        if (mime.includes('ogg')) {
-            return 'ogg';
-        }
-        if (mime.includes('mp4') || mime.includes('m4a')) {
-            return 'm4a';
-        }
-        if (mime.includes('webm')) {
-            return 'webm';
-        }
-
-        return 'audio';
+        return VoiceRecorderUtils.getExtensionFromMimeType(mimeType);
     }
 
     downloadBlob(blob, fileName) {
@@ -1057,30 +992,11 @@ class VoiceRecorderApp {
     }
 
     sanitizeFileName(fileName) {
-        return fileName
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9\s_-]/g, '')
-            .trim()
-            .replace(/\s+/g, '_')
-            .substring(0, 60)
-            .toLowerCase() || 'mensagem_de_voz';
+        return VoiceRecorderUtils.sanitizeFileName(fileName);
     }
 
     formatFileSize(sizeInBytes) {
-        if (!sizeInBytes || sizeInBytes <= 0) {
-            return '0 KB';
-        }
-        if (sizeInBytes < 1024) {
-            return `${sizeInBytes} B`;
-        }
-
-        const kb = sizeInBytes / 1024;
-        if (kb < 1024) {
-            return `${kb.toFixed(1)} KB`;
-        }
-
-        return `${(kb / 1024).toFixed(1)} MB`;
+        return VoiceRecorderUtils.formatFileSize(sizeInBytes);
     }
 
     confirmDeleteMessage(messageId) {

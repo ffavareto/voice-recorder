@@ -57,9 +57,23 @@ voice-recorder/
 ├── index.html
 ├── style.css
 ├── script.js
+├── voice-recorder-utils.js
 ├── sw.js
+├── test/
+│   └── voice-recorder-utils.test.js
+├── package.json
 └── README.md
 ```
+
+## Testes
+
+Os testes unitários usam apenas recursos nativos do Node.js:
+
+```bash
+npm test
+```
+
+Eles cobrem a camada de utilitários reaproveitada pela interface, incluindo normalização, filtros, formatação e conversões de DataURL.
 
 ## Dados armazenados
 

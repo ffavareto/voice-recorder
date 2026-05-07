@@ -1,9 +1,10 @@
-const CACHE_NAME = 'voice-recorder-v1';
+const CACHE_NAME = 'voice-recorder-v2';
 const APP_SHELL = [
     './',
     './index.html',
     './style.css',
-    './script.js'
+    './script.js',
+    './voice-recorder-utils.js'
 ];
 
 self.addEventListener('install', (event) => {
