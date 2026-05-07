@@ -19,6 +19,7 @@ class VoiceRecorderApp {
         this.timerInterval = null;
         this.pendingAction = null;
         this.toastTimeout = null;
+        this.exportProgressHideTimeout = null;
 
         this.initializeElements();
         this.bindEvents();
@@ -57,6 +58,13 @@ class VoiceRecorderApp {
         this.confirmMessage = document.getElementById('confirmMessage');
         this.confirmYes = document.getElementById('confirmYes');
         this.confirmNo = document.getElementById('confirmNo');
+        this.exportProgressModal = document.getElementById('exportProgressModal');
+        this.exportProgressTitle = document.getElementById('exportProgressTitle');
+        this.exportProgressDetail = document.getElementById('exportProgressDetail');
+        this.exportProgressTrack = document.getElementById('exportProgressTrack');
+        this.exportProgressBar = document.getElementById('exportProgressBar');
+        this.exportProgressPercent = document.getElementById('exportProgressPercent');
+        this.exportProgressStep = document.getElementById('exportProgressStep');
         this.toast = document.getElementById('toast');
     }
 
@@ -452,19 +460,44 @@ class VoiceRecorderApp {
             return;
         }
 
+        this.showExportProgress({
+            title: 'Convertendo para MP4',
+            detail: `Preparando "${message.title}" para download.`,
+            stepLabel: 'Preparando...',
+            progress: 0.02
+        });
+
         try {
             const audioBlob = this.dataURLToBlob(message.audioData);
-            const extension = this.getExtensionFromMimeType(message.mimeType || audioBlob.type);
-            const fileName = `${this.sanitizeFileName(message.title)}.${extension}`;
-            this.downloadBlob(audioBlob, fileName);
+            const mp4Blob = await this.convertBlobForMp4Download(audioBlob, {
+                onProgress: ({ progress, stepLabel, detail }) => {
+                    this.updateExportProgress({
+                        title: 'Convertendo para MP4',
+                        detail: detail || `Preparando "${message.title}" para download.`,
+                        stepLabel: stepLabel || 'Convertendo',
+                        progress
+                    });
+                }
+            });
+            const fileName = `${this.sanitizeFileName(message.title)}.mp4`;
+            this.updateExportProgress({
+                title: 'Download pronto',
+                detail: `Abrindo a janela de download para "${message.title}".`,
+                stepLabel: 'Finalizando',
+                progress: 1
+            });
+            this.downloadBlob(mp4Blob, fileName);
+            await this.wait(220);
             this.showToast('Download iniciado!', 'success');
         } catch (error) {
             console.error('Erro no download:', error);
-            this.showToast('Erro ao fazer download da mensagem', 'error');
+            this.showToast(error.message || 'Erro ao fazer download da mensagem', 'error');
+        } finally {
+            this.hideExportProgress();
         }
     }
 
-    exportAllMessages() {
+    async exportAllMessages() {
         const messages = this.getMessagesFromStorage();
 
         if (messages.length === 0) {
@@ -472,29 +505,76 @@ class VoiceRecorderApp {
             return;
         }
 
-        this.showToast(`Exportando ${messages.length} mensagem(ns)...`, 'info');
+        const exportableMessages = messages.filter((message) => message.audioData);
+        if (exportableMessages.length === 0) {
+            this.showToast('Não há mensagens com audio para exportar', 'error');
+            return;
+        }
 
-        messages.forEach((message, index) => {
-            if (!message.audioData) {
-                return;
-            }
-
-            setTimeout(() => {
-                try {
-                    const audioBlob = this.dataURLToBlob(message.audioData);
-                    const extension = this.getExtensionFromMimeType(message.mimeType || audioBlob.type);
-                    const numberedPrefix = String(index + 1).padStart(2, '0');
-                    const fileName = `${numberedPrefix}_${this.sanitizeFileName(message.title)}.${extension}`;
-                    this.downloadBlob(audioBlob, fileName);
-                } catch (error) {
-                    console.error('Erro ao exportar mensagem:', error);
-                }
-            }, index * 200);
+        this.showExportProgress({
+            title: 'Exportando mensagens em MP4',
+            detail: `Preparando ${exportableMessages.length} arquivo(s) para download.`,
+            stepLabel: 'Organizando fila...',
+            progress: 0.01
         });
 
-        setTimeout(() => {
-            this.showToast('Exportação concluída!', 'success');
-        }, messages.length * 200 + 250);
+        let exportedCount = 0;
+
+        try {
+            for (const [index, message] of exportableMessages.entries()) {
+                const position = index + 1;
+                const itemLabel = `Arquivo ${position} de ${exportableMessages.length}`;
+
+                this.updateExportProgress({
+                    title: 'Exportando mensagens em MP4',
+                    detail: `Preparando "${message.title}" para conversao.`,
+                    stepLabel: `${itemLabel} • Na fila`,
+                    progress: index / exportableMessages.length
+                });
+
+                const audioBlob = this.dataURLToBlob(message.audioData);
+                const mp4Blob = await this.convertBlobForMp4Download(audioBlob, {
+                    onProgress: ({ progress, stepLabel, detail }) => {
+                        const safeProgress = Number.isFinite(progress) ? progress : 0;
+                        const overallProgress = (index + safeProgress) / exportableMessages.length;
+
+                        this.updateExportProgress({
+                            title: 'Exportando mensagens em MP4',
+                            detail: `${message.title} • ${detail || 'Convertendo audio para MP4.'}`,
+                            stepLabel: `${itemLabel} • ${stepLabel || 'Convertendo'}`,
+                            progress: overallProgress
+                        });
+                    }
+                });
+
+                const numberedPrefix = String(position).padStart(2, '0');
+                const fileName = `${numberedPrefix}_${this.sanitizeFileName(message.title)}.mp4`;
+                this.updateExportProgress({
+                    title: 'Exportando mensagens em MP4',
+                    detail: `Abrindo o download de "${message.title}".`,
+                    stepLabel: `${itemLabel} • Finalizando`,
+                    progress: (index + 1) / exportableMessages.length
+                });
+                this.downloadBlob(mp4Blob, fileName);
+                exportedCount += 1;
+                await this.wait(220);
+            }
+
+            this.updateExportProgress({
+                title: 'Downloads prontos',
+                detail: `${exportedCount} arquivo(s) MP4 enviado(s) para o navegador.`,
+                stepLabel: 'Concluido',
+                progress: 1
+            });
+            await this.wait(260);
+            this.showToast(`Exportação concluída! ${exportedCount} arquivo(s) MP4.`, 'success');
+        } catch (error) {
+            console.error('Erro ao exportar mensagem:', error);
+            this.showToast(error.message || 'Erro ao exportar mensagens em MP4', 'error');
+        } finally {
+            this.hideExportProgress();
+        }
+
     }
 
     async handleImportFiles(event) {
@@ -618,6 +698,72 @@ class VoiceRecorderApp {
         return encodedBlob.size > 0 ? encodedBlob : audioBlob;
     }
 
+    async convertBlobForMp4Download(audioBlob, options = {}) {
+        const mp4MimeType = this.getPreferredMp4MimeType();
+        const notifyProgress = typeof options.onProgress === 'function'
+            ? options.onProgress
+            : null;
+
+        const emitProgress = (progress, stepLabel, detail) => {
+            if (notifyProgress) {
+                notifyProgress({
+                    progress: Math.max(0, Math.min(1, progress)),
+                    stepLabel,
+                    detail
+                });
+            }
+        };
+
+        if (!mp4MimeType) {
+            throw new Error('Seu navegador não suporta exportação em MP4.');
+        }
+
+        const sourceMimeType = (audioBlob.type || '').toLowerCase();
+        emitProgress(0.06, 'Preparando', 'Lendo o audio salvo.');
+
+        if (sourceMimeType.includes('mp4')) {
+            emitProgress(1, 'MP4 pronto', 'O arquivo ja estava em MP4.');
+            return audioBlob;
+        }
+
+        emitProgress(0.16, 'Decodificando', 'Preparando o audio para a conversao.');
+        const decodedBuffer = await this.decodeAudioBlob(audioBlob);
+        emitProgress(0.32, 'Codificando', 'Gerando o arquivo MP4.');
+        const mp4Blob = await this.encodeBufferWithMediaRecorder(decodedBuffer, {
+            mimeType: mp4MimeType,
+            audioBitsPerSecond: 128000,
+            unsupportedMessage: 'Seu navegador não suporta exportação em MP4.',
+            onProgress: (encodingProgress) => {
+                const normalizedProgress = 0.32 + (Math.max(0, Math.min(1, encodingProgress)) * 0.68);
+                emitProgress(
+                    normalizedProgress,
+                    'Codificando',
+                    `Gerando o arquivo MP4 (${Math.round(normalizedProgress * 100)}%).`
+                );
+            }
+        });
+        emitProgress(1, 'MP4 pronto', 'Arquivo convertido com sucesso.');
+        return mp4Blob;
+    }
+
+    async decodeAudioBlob(audioBlob) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+            throw new Error('Seu navegador não suporta conversão de áudio.');
+        }
+
+        const decodeContext = new AudioContextClass();
+
+        try {
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            return await decodeContext.decodeAudioData(arrayBuffer);
+        } catch (error) {
+            throw new Error('Não foi possível converter este áudio para MP4.');
+        } finally {
+            await decodeContext.close().catch(() => {});
+        }
+    }
+
     convertToMonoBuffer(audioBuffer) {
         if (audioBuffer.numberOfChannels === 1) {
             return audioBuffer;
@@ -664,12 +810,15 @@ class VoiceRecorderApp {
         return offlineContext.startRendering();
     }
 
-    async encodeBufferWithMediaRecorder(audioBuffer) {
+    async encodeBufferWithMediaRecorder(audioBuffer, options = {}) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        const mimeType = this.getPreferredCompressedMimeType();
+        const mimeType = options.mimeType || this.getPreferredCompressedMimeType();
+        const audioBitsPerSecond = options.audioBitsPerSecond || 64000;
+        const unsupportedMessage = options.unsupportedMessage || 'Codec comprimido não suportado neste navegador.';
+        const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
 
         if (!AudioContextClass || !mimeType) {
-            throw new Error('Codec comprimido não suportado neste navegador.');
+            throw new Error(unsupportedMessage);
         }
 
         const audioContext = new AudioContextClass({ sampleRate: audioBuffer.sampleRate });
@@ -681,10 +830,27 @@ class VoiceRecorderApp {
         const chunks = [];
         const recorder = new MediaRecorder(destination.stream, {
             mimeType,
-            audioBitsPerSecond: 64000
+            audioBitsPerSecond
         });
 
         return new Promise((resolve, reject) => {
+            let progressInterval = null;
+
+            const clearProgressInterval = () => {
+                if (progressInterval) {
+                    window.clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+            };
+
+            const getSafeProgress = () => {
+                if (!audioBuffer.duration || !Number.isFinite(audioBuffer.duration) || audioBuffer.duration <= 0) {
+                    return 0;
+                }
+
+                return Math.max(0, Math.min(0.99, audioContext.currentTime / audioBuffer.duration));
+            };
+
             recorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                     chunks.push(event.data);
@@ -692,10 +858,15 @@ class VoiceRecorderApp {
             };
 
             recorder.onerror = (event) => {
+                clearProgressInterval();
                 reject(event.error || new Error('Erro ao codificar áudio comprimido.'));
             };
 
             recorder.onstop = async () => {
+                clearProgressInterval();
+                if (onProgress) {
+                    onProgress(1);
+                }
                 await audioContext.close().catch(() => {});
                 resolve(new Blob(chunks, { type: mimeType }));
             };
@@ -706,9 +877,25 @@ class VoiceRecorderApp {
                 }
             };
 
-            recorder.start(250);
-            audioContext.resume().catch(() => {});
-            source.start(0);
+            try {
+                if (onProgress) {
+                    onProgress(0);
+                }
+
+                progressInterval = window.setInterval(() => {
+                    if (onProgress) {
+                        onProgress(getSafeProgress());
+                    }
+                }, 120);
+
+                recorder.start(250);
+                audioContext.resume().catch(() => {});
+                source.start(0);
+            } catch (error) {
+                clearProgressInterval();
+                audioContext.close().catch(() => {});
+                reject(error);
+            }
         });
     }
 
@@ -716,6 +903,25 @@ class VoiceRecorderApp {
         const preferredTypes = [
             'audio/webm;codecs=opus',
             'audio/webm',
+            'audio/mp4'
+        ];
+
+        for (const type of preferredTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                return type;
+            }
+        }
+
+        return '';
+    }
+
+    getPreferredMp4MimeType() {
+        if (typeof MediaRecorder === 'undefined') {
+            return '';
+        }
+
+        const preferredTypes = [
+            'audio/mp4;codecs=mp4a.40.2',
             'audio/mp4'
         ];
 
@@ -842,6 +1048,12 @@ class VoiceRecorderApp {
             document.body.removeChild(anchor);
             URL.revokeObjectURL(url);
         }, 150);
+    }
+
+    wait(durationMs) {
+        return new Promise((resolve) => {
+            window.setTimeout(resolve, durationMs);
+        });
     }
 
     sanitizeFileName(fileName) {
@@ -993,6 +1205,66 @@ class VoiceRecorderApp {
     hideModal() {
         this.confirmModal.classList.add('hidden');
         this.pendingAction = null;
+    }
+
+    showExportProgress({ title, detail, stepLabel, progress = 0 } = {}) {
+        if (!this.exportProgressModal) {
+            return;
+        }
+
+        if (this.exportProgressHideTimeout) {
+            clearTimeout(this.exportProgressHideTimeout);
+            this.exportProgressHideTimeout = null;
+        }
+
+        this.exportProgressModal.classList.remove('hidden');
+        this.exportProgressModal.setAttribute('aria-hidden', 'false');
+        this.updateExportProgress({ title, detail, stepLabel, progress });
+    }
+
+    updateExportProgress({ title, detail, stepLabel, progress } = {}) {
+        if (!this.exportProgressModal || this.exportProgressModal.classList.contains('hidden')) {
+            return;
+        }
+
+        const safeProgress = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0;
+        const progressPercent = Math.round(safeProgress * 100);
+
+        if (typeof title === 'string' && this.exportProgressTitle) {
+            this.exportProgressTitle.textContent = title;
+        }
+
+        if (typeof detail === 'string' && this.exportProgressDetail) {
+            this.exportProgressDetail.textContent = detail;
+        }
+
+        if (typeof stepLabel === 'string' && this.exportProgressStep) {
+            this.exportProgressStep.textContent = stepLabel;
+        }
+
+        if (this.exportProgressBar) {
+            this.exportProgressBar.style.width = `${progressPercent}%`;
+        }
+
+        if (this.exportProgressPercent) {
+            this.exportProgressPercent.textContent = `${progressPercent}%`;
+        }
+
+        if (this.exportProgressTrack) {
+            this.exportProgressTrack.setAttribute('aria-valuenow', String(progressPercent));
+        }
+    }
+
+    hideExportProgress() {
+        if (!this.exportProgressModal) {
+            return;
+        }
+
+        this.exportProgressHideTimeout = window.setTimeout(() => {
+            this.exportProgressModal.classList.add('hidden');
+            this.exportProgressModal.setAttribute('aria-hidden', 'true');
+            this.exportProgressHideTimeout = null;
+        }, 120);
     }
 
     executeConfirmedAction() {

@@ -120,6 +120,26 @@
             </div>
         </div>
 
+        <div id="exportProgressModal" class="modal progress-modal hidden" aria-hidden="true">
+            <div class="modal-content progress-modal-content">
+                <div class="progress-orb" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <p class="progress-eyebrow">Preparando download</p>
+                <h3 id="exportProgressTitle">Convertendo para MP4</h3>
+                <p id="exportProgressDetail" class="progress-detail">Organizando o audio para exportacao.</p>
+                <div id="exportProgressTrack" class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <div id="exportProgressBar" class="progress-fill"></div>
+                </div>
+                <div class="progress-meta">
+                    <span id="exportProgressPercent">0%</span>
+                    <span id="exportProgressStep">Preparando...</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast para notificações -->
         <div id="toast" class="toast hidden"></div>
     </div>
